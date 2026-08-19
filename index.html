@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>RetailOS – Working MVP</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:#111827;color:#fff;padding:16px;position:sticky;top:0;z-index:10}header h1{margin:0;font-size:23px}header small{color:#cbd5e1}
+nav{display:flex;gap:7px;padding:9px;background:#fff;border-bottom:1px solid #ddd;overflow:auto;position:sticky;top:67px;z-index:9}nav button{border:0;border-radius:20px;padding:9px 13px;white-space:nowrap;background:#e5e7eb}nav button.active{background:#111827;color:#fff}
+main{max-width:900px;margin:auto;padding:12px}.tab.hidden{display:none}.card{background:#fff;border-radius:15px;padding:14px;margin-bottom:12px;box-shadow:0 1px 4px #0001}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.stat{background:#f8fafc;border-radius:12px;padding:12px}.stat b{font-size:21px;display:block;margin-top:3px}
+input,select{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:9px;margin:5px 0 9px;font-size:15px}button{cursor:pointer}.primary{background:#111827;color:#fff;border:0;border-radius:9px;padding:11px 14px;font-weight:600}.secondary{background:#e5e7eb;border:0;border-radius:9px;padding:10px 12px}.success{background:#166534;color:#fff;border:0;border-radius:9px;padding:11px 14px;font-weight:600}.danger{background:#fee2e2;color:#991b1b;border:0;border-radius:9px;padding:9px 11px}
+.row{display:flex;gap:8px;align-items:center}.row>*{flex:1}.muted{color:#64748b;font-size:13px}.item{padding:11px 0;border-bottom:1px solid #eee}.item:last-child{border:0}.pill{display:inline-block;background:#dcfce7;color:#166534;border-radius:20px;padding:3px 8px;font-size:12px}.total{font-size:23px;font-weight:800}.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+video{width:100%;border-radius:12px;background:#000;max-height:280px}.scanbox{border:2px dashed #94a3b8;border-radius:12px;padding:10px;text-align:center}.hide{display:none!important}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:20px;display:none;z-index:99}
+@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<header><h1>RetailOS</h1><small>Mobile-first retail management • Working MVP</small></header>
+<nav id="nav">
+<button class="active" data-tab="dash">Dashboard</button><button data-tab="inventory">Inventory</button><button data-tab="scan">Scan</button><button data-tab="bill">Billing</button><button data-tab="customers">Customers</button><button data-tab="reports">Reports</button>
+</nav>
+<main>
+<section id="dash" class="tab">
+<div class="grid"><div class="stat">Products<b id="stProducts">0</b></div><div class="stat">Stock<b id="stStock">0</b></div><div class="stat">Today Sales<b id="stSales">₹0</b></div><div class="stat">Bills<b id="stBills">0</b></div></div>
+<div class="card"><h3>Quick test</h3><p class="muted">Add a product → generate its barcode → scan it with the phone camera → add to bill → complete bill → share on WhatsApp.</p></div>
+</section>
+
+<section id="inventory" class="tab hidden">
+<div class="card"><h3>Add Product</h3>
+<input id="pn" placeholder="Product name (e.g. Formal Shirt)"><div class="two"><input id="pb" placeholder="Brand"><input id="pc" placeholder="Colour"></div>
+<div class="two"><input id="ps" placeholder="Size"><input id="pbar" placeholder="Barcode (leave blank to generate)"></div>
+<div class="two"><input id="pbuy" type="number" placeholder="Buy price"><input id="psell" type="number" placeholder="Selling price"></div>
+<input id="pstock" type="number" placeholder="Opening stock">
+<div class="row"><button class="primary" onclick="addProduct()">Save Product</button><button class="secondary" onclick="generateBarcode()">Generate Barcode</button></div>
+<div id="barcodePreview" class="card hide" style="margin-top:12px;text-align:center"></div>
+</div>
+<div class="card"><h3>Inventory</h3><input id="invSearch" placeholder="Search name / brand / barcode" oninput="renderInventory()"><div id="inventoryList"></div></div>
+</section>
+
+<section id="scan" class="tab hidden">
+<div class="card"><h3>Camera Barcode Scanner</h3><div class="scanbox"><video id="video" playsinline></video><p id="scanStatus" class="muted">Tap Start Scanner.</p><button class="primary" onclick="startScanner()">Start Scanner</button> <button class="secondary" onclick="stopScanner()">Stop</button></div>
+<p class="muted">Works in browsers that support BarcodeDetector and camera permission. Manual barcode entry remains available in Billing.</p></div>
+</section>
+
+<section id="bill" class="tab hidden">
+<div class="card"><h3>New Bill</h3><div class="row"><input id="billBarcode" placeholder="Scan/type barcode"><button class="primary" onclick="addByBarcode()">Add</button></div>
+<input id="billSearch" placeholder="Search product" oninput="renderBillProducts()"><div id="billProducts"></div></div>
+<div class="card"><h3>Cart</h3><div id="cart"></div>
+<div class="row"><span>Total</span><span class="total" id="cartTotal">₹0</span></div>
+<div class="two"><div><label>Discount (₹)</label><input id="discount" type="number" min="0" placeholder="0" value="0"></div><div><label>WhatsApp number</label><input id="custPhone" inputmode="tel" placeholder="10 digit mobile"></div></div>
+<input id="custName" placeholder="Customer name (optional)">
+<div class="row"><button class="success" onclick="finishBill()">Complete Bill</button><button class="secondary" onclick="clearCart()">Clear</button></div>
+<div id="lastBill" class="hide"></div>
+</div>
+</section>
+
+<section id="customers" class="tab hidden">
+<div class="card"><h3>Save Customer</h3><input id="cn" placeholder="Name"><input id="cp" placeholder="Phone / WhatsApp"><button class="primary" onclick="saveCustomer()">Save</button></div>
+<div class="card"><div id="customerList"></div></div>
+</section>
+
+<section id="reports" class="tab hidden">
+<div class="card"><h3>Sales Summary</h3><p>Total sales: <b id="rsales">₹0</b></p><p>Total bills: <b id="rbills">0</b></p><p>Units sold: <b id="runits">0</b></p><p>Estimated gross margin: <b id="rmarg">₹0</b></p></div>
+<div class="card"><h3>Backup</h3><button class="primary" onclick="exportData()">Export Backup</button> <button class="secondary" onclick="document.getElementById('importFile').click()">Import Backup</button><input id="importFile" type="file" accept=".json" class="hide" onchange="importData(event)"></div>
+<div class="card"><button class="danger" onclick="resetAll()">Delete all local data</button></div>
+</section>
+</main>
+<div id="toast"></div>
+<script>
+const KEY='retailos_working_v2';
+let db=JSON.parse(localStorage.getItem(KEY)||'{"products":[],"customers":[],"bills":[]}');
+let cart=[], lastBill=null, scanner=null, stream=null;
+const $=id=>document.getElementById(id);
+function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll()}
+function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
+function today(){return new Date().toISOString().slice(0,10)}
+function toast(t){$('toast').textContent=t;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',2200)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(s=>s.classList.add('hidden'));$(b.dataset.tab).classList.remove('hidden');document.querySelectorAll('#nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');if(b.dataset.tab==='scan'){}});
+const C128B=[
+"212222","222122","222221","121223","121322","131222","122213","122312","132212","221213",
+"221312","231212","112232","122132","122231","113222","123122","123221","223211","221132",
+"221231","213212","223112","312131","311222","321122","321221","312212","322112","322211",
+"212123","212321","232121","111323","131123","131321","112313","132113","132311","211313",
+"231113","231311","112133","112331","132131","113123","113321","133121","313121","211331",
+"231131","213113","213311","213131","311123","311321","331121","312113","312311","332111",
+"314111","221411","431111","111224","111422","121124","121421","141122","141221","112214",
+"112412","122114","122411","142112","142211","241211","221114","413111","241112","134111",
+"111242","121142","121241","114212","124112","124211","411212","421112","421211","212141",
+"214121","412121","111143","111341","131141","114113","114311","411113","411311","113141",
+"114131","311141","411131","211412","211214","211232","2331112"];
+function makeBarcode(){return 'ROS'+Date.now().toString().slice(-8)+Math.floor(Math.random()*90+10)}
+function code128SVG(text){text=String(text).replace(/[^\x20-\x7E]/g,'');let vals=[104];for(let i=0;i<text.length;i++) vals.push(text.charCodeAt(i)-32);let sum=104;for(let i=0;i<text.length;i++) sum+=(text.charCodeAt(i)-32)*(i+1);vals.push(sum%103);vals.push(106);let x=10,scale=2.2,h=78, bars='';vals.forEach(v=>{let pat=C128B[v];for(let i=0;i<pat.length;i++){let w=+pat[i]*scale;if(i%2===0)bars+=`<rect x="${x}" y="10" width="${w}" height="${h}" fill="#000"/>`;x+=w}});return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${x+10} 125" width="100%" height="125"><rect width="100%" height="100%" fill="#fff"/>${bars}<text x="50%" y="108" text-anchor="middle" font-family="monospace" font-size="18" letter-spacing="2">${esc(text)}</text></svg>`}
+function generateBarcode(){let code=makeBarcode();$('pbar').value=code;showBarcode(code)}
+function showBarcode(code){$('barcodePreview').classList.remove('hide');let p=$('pn').value.trim()||'Product';let size=$('ps').value.trim()||'-';let price=$('psell').value||'';$('barcodePreview').innerHTML=`<div id="labelPrint" style="max-width:330px;margin:auto"><b style="font-size:18px">ABHI FASHION</b><div style="font-size:16px;margin-top:4px">${esc(p)}</div><div style="font-size:15px">Size: ${esc(size)} &nbsp; | &nbsp; MRP: ₹${esc(price)}</div>${code128SVG(code)}</div><button class="secondary" onclick="printLabel()">Print Label</button>`}
+function printLabel(){let html=$('labelPrint').outerHTML;let w=window.open('','_blank','width=420,height=350');if(!w)return toast('Pop-up blocked');w.document.write('<html><body style="margin:10px;text-align:center">'+html+'<style>@media print{body{margin:0}.secondary{display:none}}</style><script>window.print()<\/script></body></html>');w.document.close()}
+$('pbar').addEventListener('input',e=>{if(e.target.value)showBarcode(e.target.value)});['pn','ps','psell'].forEach(id=>$(id).addEventListener('input',()=>{if($('pbar').value)showBarcode($('pbar').value)}))
+function addProduct(){
+ let name=$('pn').value.trim(), bar=$('pbar').value.trim()||makeBarcode(); if(!name)return toast('Product name required');
+ if(db.products.some(p=>p.barcode===bar))return toast('Barcode already exists');
+ db.products.push({id:Date.now(),name,brand:$('pb').value.trim(),color:$('pc').value.trim(),size:$('ps').value.trim(),barcode:bar,buy:+$('pbuy').value||0,sell:+$('psell').value||0,stock:+$('pstock').value||0});
+ ['pn','pb','pc','ps','pbar','pbuy','psell','pstock'].forEach(x=>$(x).value='');$('barcodePreview').classList.add('hide');save();toast('Product saved')}
+function renderInventory(){let q=$('invSearch').value.toLowerCase();let a=db.products.filter(p=>(p.name+' '+p.brand+' '+p.barcode).toLowerCase().includes(q));$('inventoryList').innerHTML=a.map(p=>`<div class="item"><b>${esc(p.name)}</b> <span class="pill">${p.stock} stock</span><div class="muted">${esc(p.brand)} · ${esc(p.size)} · ${esc(p.color)} · ${esc(p.barcode)} · ${money(p.sell)}</div></div>`).join('')||'<p class="muted">No products.</p>'}
+function renderBillProducts(){let q=$('billSearch').value.toLowerCase();let a=db.products.filter(p=>p.stock>0&&(p.name+' '+p.brand+' '+p.barcode).toLowerCase().includes(q));$('billProducts').innerHTML=a.map(p=>`<div class="item"><div class="row"><div><b>${esc(p.name)}</b><div class="muted">${esc(p.size)} ${esc(p.color)} · ${money(p.sell)} · stock ${p.stock}</div></div><button class="primary" onclick="addCart(${p.id})">Add</button></div></div>`).join('')||'<p class="muted">No matching products.</p>'}
+function addByBarcode(){let b=$('billBarcode').value.trim();let p=db.products.find(x=>x.barcode===b);if(!p)return toast('Barcode not found');addCart(p.id);$('billBarcode').value=''}
+function addCart(id){let p=db.products.find(x=>x.id===id);if(!p||p.stock<1)return toast('Out of stock');let x=cart.find(x=>x.id===id);if(x){if(x.qty>=p.stock)return toast('Maximum stock reached');x.qty++}else cart.push({id,qty:1});renderCart()}
+function renderCart(){let sub=0;$('cart').innerHTML=cart.map(x=>{let p=db.products.find(p=>p.id===x.id);sub+=p.sell*x.qty;return `<div class="item"><div class="row"><span>${esc(p.name)} × ${x.qty}</span><b>${money(p.sell*x.qty)}</b></div><button class="secondary" onclick="changeQty(${x.id},-1)">−</button> <button class="secondary" onclick="changeQty(${x.id},1)">+</button></div>`}).join('')||'<p class="muted">Cart empty.</p>';let total=Math.max(0,sub-(+$('discount').value||0));$('cartTotal').textContent=money(total)}
+$('discount').addEventListener('input',renderCart)
+function changeQty(id,d){let x=cart.find(x=>x.id===id),p=db.products.find(p=>p.id===id);if(!x)return;x.qty+=d;if(x.qty<=0)cart=cart.filter(y=>y.id!==id);if(x.qty>p.stock)x.qty=p.stock;renderCart()}
+function clearCart(){cart=[];lastBill=null;$('lastBill').classList.add('hide');renderCart()}
+function finishBill(){
+ if(!cart.length)return toast('Cart is empty');let subtotal=cart.reduce((s,x)=>s+db.products.find(p=>p.id===x.id).sell*x.qty,0),disc=Math.max(0,+$('discount').value||0),total=Math.max(0,subtotal-disc);
+ cart.forEach(x=>db.products.find(p=>p.id===x.id).stock-=x.qty);
+ let bill={id:Date.now(),no:'ROS-'+new Date().getFullYear()+'-'+String(db.bills.length+1).padStart(5,'0'),date:today(),time:new Date().toLocaleTimeString('en-IN'),customer:$('custName').value.trim(),phone:$('custPhone').value.trim(),items:cart.map(x=>({...x})),subtotal,discount:disc,total,units:cart.reduce((s,x)=>s+x.qty,0)};
+ db.bills.push(bill);lastBill=bill;cart=[];save();showLastBill();toast('Bill completed')}
+function showLastBill(){let b=lastBill;$('lastBill').classList.remove('hide');$('lastBill').innerHTML=`<hr><b>${b.no}</b> · ${money(b.total)}<div style="margin-top:8px" class="row"><button class="primary" onclick="printBill()">Print Bill</button><button class="success" onclick="shareWhatsApp()">WhatsApp</button></div>`}
+function billText(b){let lines=['ABHI FASHION','Bill No: '+b.no,'Date: '+b.date+' '+b.time,'Customer: '+(b.customer||'Walk-in'),'------------------------------'];b.items.forEach(x=>{let p=db.products.find(p=>p.id===x.id);lines.push(p.name+' | '+p.size+' | '+x.qty+' x '+money(p.sell)+' = '+money(p.sell*x.qty))});lines.push('------------------------------','Subtotal: '+money(b.subtotal),'Discount: '+money(b.discount),'TOTAL: '+money(b.total),'','Thank you for shopping!');return lines.join('\n')}
+function shareWhatsApp(){if(!lastBill)return;let phone=(lastBill.phone||'').replace(/\D/g,'');if(phone.length<10)return toast('Enter customer WhatsApp number');let text=billText(lastBill);if(window.Android&&Android.openWhatsApp){Android.openWhatsApp(phone,text)}else{let url='https://wa.me/'+(phone.length===10?'91'+phone:phone)+'?text='+encodeURIComponent(text);window.open(url,'_blank')}}
+function printBill(){if(!lastBill)return;let w=window.open('','_blank','width=420,height=700');w.document.write('<pre style="font:16px monospace;white-space:pre-wrap;padding:20px">'+esc(billText(lastBill))+'</pre><script>window.print()<\/script>');w.document.close()}
+function saveCustomer(){let n=$('cn').value.trim();if(!n)return toast('Name required');db.customers.push({id:Date.now(),name:n,phone:$('cp').value.trim()});$('cn').value='';$('cp').value='';save();toast('Customer saved')}
+function renderCustomers(){$('customerList').innerHTML=db.customers.map(c=>`<div class="item"><b>${esc(c.name)}</b><div class="muted">${esc(c.phone)}</div></div>`).join('')||'<p class="muted">No customers.</p>'}
+function renderStats(){let bs=db.bills.filter(b=>b.date===today());$('stProducts').textContent=db.products.length;$('stStock').textContent=db.products.reduce((s,p)=>s+p.stock,0);$('stSales').textContent=money(bs.reduce((s,b)=>s+b.total,0));$('stBills').textContent=bs.length}
+function renderReports(){let sales=db.bills.reduce((s,b)=>s+b.total,0),units=db.bills.reduce((s,b)=>s+b.units,0),margin=db.bills.reduce((s,b)=>s+b.items.reduce((z,x)=>{let p=db.products.find(p=>p.id===x.id);return z+(p.sell-p.buy)*x.qty},0),0);$('rsales').textContent=money(sales);$('rbills').textContent=db.bills.length;$('runits').textContent=units;$('rmarg').textContent=money(margin)}
+function renderAll(){renderInventory();renderBillProducts();renderCart();renderCustomers();renderStats();renderReports()}
+async function startScanner(){
+ if(window.Android&&Android.startScanner){Android.startScanner();return;}
+ if(!('BarcodeDetector' in window))return toast('Camera scanner unavailable. Use native scanner or type barcode manually.');
+ try{scanner=new BarcodeDetector({formats:['ean_13','ean_8','code_128','upc_a','upc_e','code_39','itf','qr_code']});stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});$('video').srcObject=stream;await $('video').play();$('scanStatus').textContent='Scanning… point camera at barcode';scanLoop()}catch(e){toast('Camera permission/error')}}
+async function scanLoop(){if(!stream)return;try{let codes=await scanner.detect($('video'));if(codes.length){let code=codes[0].rawValue;$('billBarcode').value=code;stopScanner();document.querySelector('[data-tab="bill"]').click();addByBarcode();return}}catch(e){}requestAnimationFrame(scanLoop)}
+function onNativeBarcode(code){$('billBarcode').value=code;document.querySelector('[data-tab=\"bill\"]').click();addByBarcode();toast('Barcode scanned: '+code)}
+function stopScanner(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('video').srcObject=null;$('scanStatus').textContent='Scanner stopped.'}
+function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='retailos-backup.json';a.click()}
+function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);save();toast('Backup imported')}catch(x){toast('Invalid backup')}};r.readAsText(f)}
+function resetAll(){if(confirm('Delete all RetailOS data from this device?')){localStorage.removeItem(KEY);location.reload()}}
+renderAll();
+</script>
+</body>
+</html>
