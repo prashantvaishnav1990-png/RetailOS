@@ -18,43 +18,50 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '11'
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.7.12'
-          channel: stable
+          java-version: '17'
 
       - name: Extract Android project
         run: |
           mkdir -p "$GITHUB_WORKSPACE/project"
           unzip -q "$GITHUB_WORKSPACE/RetailOS_Android_Project.zip" -d "$GITHUB_WORKSPACE/project"
 
-          PUBSPEC=$(find "$GITHUB_WORKSPACE/project" -type f -name "pubspec.yaml" -print -quit)
+          SETTINGS=$(find "$GITHUB_WORKSPACE/project" -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -print -quit)
 
-          if [ -z "$PUBSPEC" ]; then
-            echo "ERROR: pubspec.yaml not found"
-            find "$GITHUB_WORKSPACE/project" -maxdepth 3 -type f | head -100
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: settings.gradle not found"
+            find "$GITHUB_WORKSPACE/project" -maxdepth 4 -type f | head -100
             exit 1
           fi
 
-          PROJECT_DIR=$(dirname "$PUBSPEC")
+          PROJECT_DIR=$(dirname "$SETTINGS")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Found project at: $PROJECT_DIR"
-
-      - name: Get dependencies
-        run: |
-          cd "$PROJECT_DIR"
-          flutter pub get
+          echo "Found Android project at: $PROJECT_DIR"
 
       - name: Build APK
         run: |
           cd "$PROJECT_DIR"
-          flutter build apk --release
+
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+            ./gradlew assembleRelease
+          else
+            gradle assembleRelease
+          fi
+
+      - name: Find APK
+        run: |
+          APK=$(find "$PROJECT_DIR" -type f -name "*.apk" -print -quit)
+
+          if [ -z "$APK" ]; then
+            echo "ERROR: APK not found"
+            exit 1
+          fi
+
+          echo "APK=$APK" >> "$GITHUB_ENV"
+          echo "Found APK: $APK"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: RetailOS-APK
-          path: "$PROJECT_DIR/build/app/outputs/flutter-apk/app-release.apk"
+          path: ${{ env.APK }}
