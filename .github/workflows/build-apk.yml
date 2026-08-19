@@ -25,11 +25,11 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/project"
           unzip -q "$GITHUB_WORKSPACE/RetailOS_Android_Project.zip" -d "$GITHUB_WORKSPACE/project"
 
-          SETTINGS=$(find "$GITHUB_WORKSPACE/project" -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -print -quit)
+          SETTINGS=$(find "$GITHUB_WORKSPACE/project" -maxdepth 5 -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) | head -1)
 
           if [ -z "$SETTINGS" ]; then
             echo "ERROR: settings.gradle not found"
-            find "$GITHUB_WORKSPACE/project" -maxdepth 4 -type f | head -100
+            find "$GITHUB_WORKSPACE/project" -maxdepth 5 -type f | head -100
             exit 1
           fi
 
@@ -37,7 +37,7 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Found Android project at: $PROJECT_DIR"
 
-      - name: Build APK
+      - name: Build Debug APK
         run: |
           cd "$PROJECT_DIR"
 
@@ -45,15 +45,16 @@ jobs:
             chmod +x ./gradlew
             ./gradlew assembleDebug
           else
-            gradle assembleRelease
+            gradle assembleDebug
           fi
 
       - name: Find APK
         run: |
-         APK=$(find "$PROJECT_DIR" -type f -name "*.apk" -print -quit)
+          APK=$(find "$PROJECT_DIR" -type f -name "app-debug.apk" -print -quit)
 
           if [ -z "$APK" ]; then
-            echo "ERROR: APK not found"
+            echo "ERROR: app-debug.apk not found"
+            find "$PROJECT_DIR" -type f -name "*.apk" -print
             exit 1
           fi
 
