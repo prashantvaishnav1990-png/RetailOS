@@ -29,8 +29,9 @@ jobs:
       - name: Extract Android project
         run: |
           unzip -q "$GITHUB_WORKSPACE/RetailOS_Android_Project.zip" -d "$GITHUB_WORKSPACE/project"
-          PROJECT_DIR=$(dirname "$(find "$GITHUB_WORKSPACE/project" -name pubspec.yaml -print -quit)")
+          PROJECT_DIR=$(find "$GITHUB_WORKSPACE/project" -name pubspec.yaml -print -quit | xargs dirname)
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Found project at: $PROJECT_DIR"
 
       - name: Get dependencies
         run: |
