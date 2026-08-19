@@ -50,7 +50,7 @@ jobs:
 
       - name: Find APK
         run: |
-          APK=$(find "$PROJECT_DIR" -type f -name "*.apk" -print -quit)
+         APK=$(find "$PROJECT_DIR" -type f -name "app-debug.apk" -print -quit) 
 
           if [ -z "$APK" ]; then
             echo "ERROR: APK not found"
