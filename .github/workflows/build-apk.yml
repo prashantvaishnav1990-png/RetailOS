@@ -43,7 +43,7 @@ jobs:
 
           if [ -f "./gradlew" ]; then
             chmod +x ./gradlew
-            ./gradlew assembleRelease
+            ./gradlew assembleDebug
           else
             gradle assembleRelease
           fi
